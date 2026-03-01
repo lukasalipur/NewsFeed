@@ -34,7 +34,7 @@ struct ArticleListView: View {
     private var articleList: some View {
           List {
               ForEach(articleListViewModel.articles) { article in
-                  NavigationLink(destination: Text("data")) {
+                  NavigationLink(destination: ArticleDetailView(article: article)) {
                       ArticleRowView(article: article)
                   }
                   .task {
@@ -108,7 +108,7 @@ struct ErrorView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "wifi.slash")
+            Image(systemName: "exclamationmark")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
             Text("Something went wrong")
