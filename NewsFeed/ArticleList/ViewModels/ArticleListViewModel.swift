@@ -10,12 +10,14 @@ import Observation
 
 
 @Observable class ArticleListViewModel {
-    
+    // MARK: - Private Properties
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+
     // MARK: - Published State
     var articles: [Article] = []
     var isLoading = false
     var isLoadingMore = false
-    var errorMessage: String? = nil
+    var errorMessage: String? = "Test"
     
     // MARK: - Pagination
     private var currentPage = 1
@@ -33,21 +35,25 @@ import Observation
     
     // MARK: - Public Methods
     func loadArticles() async {
-        guard !isLoading else { return }
-        
         isLoading = true
         errorMessage = nil
         currentPage = 1
-        
+        defer { isLoading = false }
         do {
             let result = try await repository.fetchArticles(page: currentPage)
             articles = result.articles
             totalResults = result.totalResults
+            
+        #if DEBUG
+            print("Loaded \(articles)")
+        #endif
         } catch {
             errorMessage = error.localizedDescription
+        #if DEBUG
+            print("loadArticles failed: \(error)")
+        #endif
         }
         
-        isLoading = false
     }
     
     func loadMoreIfNeeded(currentArticle: Article) async {
@@ -73,6 +79,11 @@ import Observation
     }
     
     func refresh() async {
-        await loadArticles()
+        refreshTask?.cancel()
+        refreshTask = Task {
+            await loadArticles()
+        }
+        await refreshTask?.value
+        refreshTask = nil
     }
 }
