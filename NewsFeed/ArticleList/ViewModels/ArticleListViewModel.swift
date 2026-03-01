@@ -17,7 +17,7 @@ import Observation
     var articles: [Article] = []
     var isLoading = false
     var isLoadingMore = false
-    var errorMessage: String? = "Test"
+    var errorMessage: String? = nil
     
     // MARK: - Pagination
     private var currentPage = 1

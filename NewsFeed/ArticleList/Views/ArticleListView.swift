@@ -59,12 +59,27 @@ struct ArticleListView: View {
   }
 
 struct ArticleRowView: View {
-    var article: Article
+    let article: Article
+    
     var body: some View {
-        VStack{
+        VStack(alignment: .leading, spacing: 6) {
             Text(article.title)
-                .font(.title)
+                .font(.headline)
+                .lineLimit(2)
+            
+            HStack {
+                Text(article.source.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+                
+                Text(article.publishedAt.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .padding(.vertical, 4)
     }
 }
 
