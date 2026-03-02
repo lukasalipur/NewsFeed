@@ -47,11 +47,14 @@ import Observation
         #if DEBUG
             print("Loaded \(articles)")
         #endif
+            
         } catch {
             errorMessage = error.localizedDescription
+            
         #if DEBUG
             print("loadArticles failed: \(error)")
         #endif
+            
         }
         
     }
@@ -71,6 +74,9 @@ import Observation
             let result = try await repository.fetchArticles(page: currentPage)
             articles.append(contentsOf: result.articles)
             totalResults = result.totalResults
+        #if DEBUG
+            print(currentPage)
+        #endif
         } catch {
             currentPage -= 1
         }

@@ -21,7 +21,7 @@ public enum Environment {
         return dict
     }()
     
-    private static let apiKey: String = {
+    static let apiKey: String = {
         guard let apiKeyString = Environment.infoDictionary[Keys.apiKey] as? String else {
             fatalError("API Key is not set in plist")
         }

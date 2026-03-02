@@ -14,7 +14,7 @@ protocol ArticleRepositoryProtocol {
 final class ArticleRepository: ArticleRepositoryProtocol {
     private let networkService: NetworkServiceProtocol
     private let pageSize = 10
-    private let apiKey = Bundle.main.object(forInfoDictionaryKey: "NEWS_API_KEY") as? String ?? ""
+    private let apiKey = Environment.apiKey
 
     init(networkService: NetworkServiceProtocol = NetworkService()) {
         self.networkService = networkService
