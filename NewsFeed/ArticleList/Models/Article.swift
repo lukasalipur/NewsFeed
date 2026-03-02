@@ -30,3 +30,16 @@ struct Article: Identifiable, Decodable {
         case title, author, source, publishedAt, description, url
     }
 }
+
+#if DEBUG
+extension Article {
+    static let mock = Article(
+        title: "Test Article",
+        author: "Test Author",
+        source: Source(name: "Test Source"),
+        publishedAt: Date(),
+        description: "Test description",
+        url: URL(string: "https://example.com")!
+    )
+}
+#endif
