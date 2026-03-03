@@ -9,6 +9,7 @@ import Foundation
 import Observation
 
 
+@MainActor
 @Observable class ArticleListViewModel {
     // MARK: - Private Properties
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
@@ -18,47 +19,46 @@ import Observation
     var isLoading = false
     var isLoadingMore = false
     var errorMessage: String? = nil
-    
+    var loadMoreError: String? = nil
+
     // MARK: - Pagination
     private var currentPage = 1
     private var totalResults = 0
     private var hasMorePages: Bool {
         articles.count < totalResults
     }
-    
+
     // MARK: - Dependencies
     private let repository: ArticleRepositoryProtocol
-    
+
     init(repository: ArticleRepositoryProtocol = ArticleRepository()) {
         self.repository = repository
     }
-    
+
     // MARK: - Public Methods
     func loadArticles() async {
         isLoading = true
         errorMessage = nil
         currentPage = 1
         defer { isLoading = false }
+
         do {
             let result = try await repository.fetchArticles(page: currentPage)
             articles = result.articles
             totalResults = result.totalResults
             
-        #if DEBUG
-            print("Loaded \(articles)")
-        #endif
+            #if DEBUG
+            print("Loaded page \(currentPage), total: \(articles.count)/\(totalResults)")
+            #endif
             
         } catch {
-            errorMessage = error.localizedDescription
-            
-        #if DEBUG
-            print("loadArticles failed: \(error)")
-        #endif
-            
+            guard !error.isCancellation else { return }
+            articles = []
+            totalResults = 0
+            errorMessage = AppError(from: error).userMessage
         }
-        
     }
-    
+
     func loadMoreIfNeeded(currentArticle: Article) async {
         guard
             !isLoadingMore,
@@ -66,24 +66,33 @@ import Observation
             let last = articles.last,
             last.id == currentArticle.id
         else { return }
-        
+
         isLoadingMore = true
+        loadMoreError = nil
+        defer { isLoadingMore = false }
+
         currentPage += 1
-        
+
         do {
             let result = try await repository.fetchArticles(page: currentPage)
             articles.append(contentsOf: result.articles)
             totalResults = result.totalResults
-        #if DEBUG
-            print(currentPage)
-        #endif
+
+            #if DEBUG
+            print("Loaded page \(currentPage), total: \(articles.count)/\(totalResults)")
+            #endif
+
         } catch {
             currentPage -= 1
+            guard !error.isCancellation else { return }
+            loadMoreError = AppError(from: error).userMessage
+
+            #if DEBUG
+            print("loadMoreIfNeeded failed on page \(currentPage + 1): \(error)")
+            #endif
         }
-        
-        isLoadingMore = false
     }
-    
+
     func refresh() async {
         refreshTask?.cancel()
         refreshTask = Task {
@@ -91,5 +100,14 @@ import Observation
         }
         await refreshTask?.value
         refreshTask = nil
+    }
+}
+
+
+// MARK: - Error + Cancellation Helper
+private extension Error {
+    var isCancellation: Bool {
+        (self as? CancellationError) != nil ||
+        (self as? URLError)?.code == .cancelled
     }
 }

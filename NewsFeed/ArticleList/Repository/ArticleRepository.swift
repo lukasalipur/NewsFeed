@@ -21,15 +21,18 @@ final class ArticleRepository: ArticleRepositoryProtocol {
     }
     
     func fetchArticles(page: Int) async throws -> (articles: [Article], totalResults: Int) {
-        guard let url = buildURL(page: page) else {
+        guard let url = try buildURL(page: page) else {
             throw NetworkError.invalidURL
         }
         
         let response = try await networkService.fetch(NewsAPIResponse.self, from: url)
+        #if DEBUG
+        print("URL: \(url)")
+        #endif
         return (response.articles, response.totalResults)
     }
     
-    private func buildURL(page: Int) -> URL? {
+    private func buildURL(page: Int) throws -> URL? {
         var components = URLComponents(string: "https://newsapi.org/v2/top-headlines")
         components?.queryItems = [
             .init(name: "country",  value: "us"),

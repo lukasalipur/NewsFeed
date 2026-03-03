@@ -34,6 +34,7 @@ struct ArticleListView: View {
     }
     
     private var articleList: some View {
+
         List {
             ForEach(articleListViewModel.articles) { article in
                 NavigationLink(destination: ArticleDetailView(article: article)) {
