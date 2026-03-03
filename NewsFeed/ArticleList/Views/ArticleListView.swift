@@ -61,6 +61,7 @@ struct ArticleListView: View {
     }
 }
 
+
 struct ArticleRowView: View {
     let article: Article
     
@@ -85,6 +86,7 @@ struct ArticleRowView: View {
         .padding(.vertical, 4)
     }
 }
+
 
 
 #Preview {

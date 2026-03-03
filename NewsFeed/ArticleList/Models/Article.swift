@@ -13,7 +13,7 @@ struct NewsAPIResponse: Decodable {
     let articles: [Article]
 }
 
-struct Article: Identifiable, Decodable {
+struct Article: Identifiable, Codable {
     let id: UUID = UUID()
     let title: String
     let author: String?
@@ -22,7 +22,7 @@ struct Article: Identifiable, Decodable {
     let description: String?
     let url: URL
     
-    struct Source: Decodable {
+    struct Source: Codable {
         let name: String
     }
     
