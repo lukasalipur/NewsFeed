@@ -1,13 +1,13 @@
 # NewsFeed
 
-A news feed iOS app built as a take-home assignment. Fetches top US headlines from [NewsAPI.org](https://newsapi.org), displays them in a paginated list, and supports offline reading via local cache.
+A take-home assignment built to simulate joining a team maintaining a production iOS app. The goal was not to build something impressive from scratch, but to demonstrate how I structure code, handle edge cases, and make decisions under realistic constraints.
 
 ---
 
 ## Tech Stack
 
-- **Swift**
-- **SwiftUI**
+- ** Swift **
+- ** SwiftUI ** 
 
 ---
 
@@ -15,98 +15,88 @@ A news feed iOS app built as a take-home assignment. Fetches top US headlines fr
 
 - Xcode 15+
 - iOS 17.0+
-- A free [NewsAPI.org](https://newsapi.org) API key
+- A free API key from [newsapi.org](https://newsapi.org)
 
 ---
 
 ## Setup
 
-The API key is stored in a `.env` file and injected at build time via a Run Script phase and `.xcconfig`. Neither file is committed to the repository.
+The API key is never committed to the repository. It is stored in a `.env` file and injected into the app at build time through a Pre-Action script that writes it into `Config.xcconfig` before Xcode reads it.
 
 1. Clone the repo
 2. Create a `.env` file in the project root:
    ```
-   API_KEY=your_api_key_here (key: 2c747af715ed4c1d993676b8fa3bbefc)
+   API_KEY = your_api_key_here
    ```
 3. Open `NewsFeed.xcodeproj`
-4. Build and run (`Cmd+R`)
+4. Build and run — `Cmd+R`
 
-The Run Script reads `.env` and writes the key into `.xcconfig`, which is referenced by `Info.plist` via `$(API_KEY)`. `Environment.swift` reads it at runtime using `Bundle.main.infoDictionary`.
+`Config.xcconfig` is already present in the project as a placeholder so Xcode can resolve the build configuration. The Pre-Action script overwrites it with your real key before every build. You do not need to touch any Xcode settings.
+
+**NOTE:** API Key will be provided via email.
 
 ---
 
 ## Architecture
 
-The app follows **MVVM** with a clear separation of concerns across layers:
+The app follows MVVM with a strict separation between layers. Each layer has one responsibility and communicates only with the layer directly below it.
 
 ```
-Views/
-├── Components/         → Reusable UI components (banners, row views)
-├── ArticleListView     → Article feed with pagination and offline state
-├── ArticleDetailView   → Full article detail with external link
-└── ArticleStatusView   → Fullscreen empty and error states
+Views
+  └── renders state, delegates actions to ViewModel
 
-ViewModels/
-└── ArticleListViewModel → State management, pagination, cache coordination
+ViewModel
+  └── owns all UI state, coordinates repository and cache
 
-Repository/
-└── ArticleRepository   → Fetches and maps API responses to domain models
+Repository
+  └── fetches from network, maps response to domain model
 
-Networking/
-├── NetworkService      → URLSession wrapper, HTTP and decoding
-└── NetworkError        → Typed network error enum
+Models
+  └── Article, NewsAPIResponse — plain data structures, no logic
 
-Utilities/
-├── AppError            → Maps NetworkError to user-facing messages
-├── ArticleCacheService → UserDefaults-backed article cache
-└── Environment         → Safe API key access from Info.plist
+Networking
+  └── URLSession wrapper, handles HTTP status codes and decoding
+
+Utilities
+  └── AppError, ArticleCacheService, Environment
 ```
 
-**Key decisions:**
+**Why MVVM and not Clean Architecture?**
+Clean Architecture adds a Use Case layer that makes sense when business logic is complex or shared across multiple ViewModels. This app has one screen, one endpoint, and straightforward logic. Adding Use Cases here would be indirection without benefit.
 
-- **`@Observable`** (iOS 17) instead of `ObservableObject` — eliminates the need for `@Published` on every property and reduces boilerplate
-- **Protocol-based dependencies** — `ArticleRepositoryProtocol` and `NetworkServiceProtocol` are both abstracted behind protocols, making them straightforward to mock in tests
-- **Typed error handling** — `NetworkError` is thrown by the network layer, `AppError` maps it to user-facing messages at the ViewModel level, keeping presentation logic out of networking code
-- **Fail-fast networking** — `URLSession` is configured with a 10s request timeout and `waitsForConnectivity = false` so the app reports a network failure immediately instead of waiting for the system timeout
-- **Separated cached state** — `isShowingCachedData` controls the auto-dismissing toast banner (4s), while `isShowingCachedContent` controls the persistent refresh button at the bottom of the list, keeping their lifecycles independent
+**Why `@Observable` instead of `ObservableObject`?**
+`@Observable` (iOS 17) tracks only the properties that are actually read in a given View body, which means fewer unnecessary re-renders. It also eliminates `@Published` on every property, which reduces boilerplate and makes the ViewModel easier to read.
 
----
+**Why protocol-based dependencies?**
+`ArticleRepositoryProtocol` and `NetworkServiceProtocol` allow the ViewModel to be tested without a real network. `MockArticleRepository` in the test suite is the direct result of this decision.
 
-## Features
+**How errors are handled**
+There are two error types with distinct responsibilities. `NetworkError` is thrown by `NetworkService` and carries technical information — the `URLError` code, the HTTP status, the `DecodingError`. `AppError` lives at the ViewModel level and maps `NetworkError` into user-facing strings. This means the networking layer never knows about UI, and the ViewModel never has to inspect raw `URLError` codes.
 
-- Article list with title, source name, and formatted publish date
-- Infinite scroll with bottom loading indicator
-- Pull-to-refresh
-- Fullscreen error state with retry button
-- Empty state
-- Offline support — last successful response is cached and shown when offline, with a toast banner and a persistent refresh button at the bottom of the list
-- Article detail with title, author, date, description, and a link to the full article in the system browser
+`URLSession` is also configured with `waitsForConnectivity = false` and a 10 second request timeout. Without this, iOS waits up to 60 seconds before reporting a connectivity failure, which makes the app feel broken when there is no internet.
 
----
+**How offline is handled**
+When a network request fails due to connectivity, the app loads the last successful response from `UserDefaults` and shows it with a toast banner and a refresh button. If the failure is not connectivity-related — a server error, a decoding failure — the app shows the fullscreen error state instead, because cached articles are not relevant to those failures.
 
-## Testing
-
-Unit tests cover `ArticleListViewModel` using `MockArticleRepository`:
-
-- Successful load populates `articles` and clears `errorMessage`
-- Failed load sets `errorMessage` and leaves `articles` empty
+The stale data UI uses two separate state flags: `isShowingCachedData` drives the toast banner which auto-dismisses after 4 seconds, and `isShowingCachedContent` drives the persistent refresh button at the bottom of the list. They are independent because their lifecycles are different.
 
 ---
 
 ## What I Would Improve With More Time
 
-**Firebase Crashlytics** — the app has no crash reporting. In a production environment this would be one of the first integrations to add for visibility into real-world failures.
+**Cache expiry** — `UserDefaults` has no TTL mechanism. With more time I would move to `SwiftData` and attach a timestamp to each cached response so that data older than a defined threshold is treated as expired rather than shown as stale.
 
-**Deep links** — `myapp://article/{id}` is not implemented. This would require assigning stable IDs to articles (the API does not provide them), handling the URL scheme via `onOpenURL`, and navigating directly to the detail screen.
+**Deep links** — `myapp://article/{id}` is not implemented. The blocker is that NewsAPI does not return stable article IDs, so there is nothing to put in the URL. A real implementation would require either generating a local ID or using the article URL as the identifier.
 
-**Better cache** — `UserDefaults` works for this scope but has no expiry mechanism. A proper solution would use `SwiftData` with a TTL so cached data older than a defined threshold is automatically invalidated and not shown as fresh content.
+**Firebase Crashlytics** — there is no crash reporting. In a production app this would be one of the first things to add, because you cannot fix what you cannot observe.
 
 ---
 
+## Bonus Features
+
+Of the optional bonus items, I implemented **offline cache** as it directly improves the user experience the app shows the last successful response when there is no connectivity, with a clear indicator that the data may be stale.
+
+
 ## What I Intentionally Left Out
 
-**Firebase** — initializing the SDK without using any of its features felt like unnecessary noise. Crashlytics would be the first real integration in a production project.
-
-**Fastlane** — excluded as it requires provisioning profile configuration that is not meaningful without a real team setup.
-
-**Pixel-perfect design and animations** — the UI follows standard iOS patterns but visual polish was intentionally deprioritized in favour of architecture and error handling.
+** Firebase ** and ** Fastlane ** were intentionally skipped. Both require real project  configuration to be meaningful, and an empty initialisation or a wrapper lane without proper signing setup would not demonstrate anything useful. I find it uncomfortable to leave code in a project that serves no real purpose it adds noise and gives a false impression of completeness.
