@@ -21,6 +21,9 @@ import Observation
     var errorMessage: String? = nil
     var loadMoreError: String? = nil
     var isShowingStaleData = false
+    var cacheLastUpdated: Date? {
+        cache.lastUpdated
+    }
     
     // MARK: - Pagination
     private var currentPage = 1
@@ -64,7 +67,7 @@ import Observation
             let cached = cache.load()
             if !cached.isEmpty {
                 articles = cached
-                isShowingStaleData = true
+                showToastDataBanner()
                 #if DEBUG
                 print("Loading cached articles")
                 #endif
@@ -117,6 +120,14 @@ import Observation
         }
         await refreshTask?.value
         refreshTask = nil
+    }
+    
+    func showToastDataBanner() {
+        isShowingStaleData = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            isShowingStaleData = false
+        }
     }
 }
 

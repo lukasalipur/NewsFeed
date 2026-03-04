@@ -24,6 +24,14 @@ struct ArticleListView: View {
                     }
                 } else {
                     articleList
+                        .overlay(alignment: .top) {
+                            if articleListViewModel.isShowingStaleData {
+                                ToastErrorMessage(lastUpdated: articleListViewModel.cacheLastUpdated)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                        }
+                        .animation(.easeInOut, value: articleListViewModel.isShowingStaleData)
+                    
                 }
             }
             .navigationTitle("Top Headlines")
@@ -34,7 +42,7 @@ struct ArticleListView: View {
     }
     
     private var articleList: some View {
-
+        
         List {
             ForEach(articleListViewModel.articles) { article in
                 NavigationLink(destination: ArticleDetailView(article: article)) {
