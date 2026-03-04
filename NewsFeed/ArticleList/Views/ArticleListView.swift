@@ -25,13 +25,14 @@ struct ArticleListView: View {
                 } else {
                     articleList
                         .overlay(alignment: .top) {
-                            if articleListViewModel.isShowingStaleData {
-                                ToastErrorMessage(lastUpdated: articleListViewModel.cacheLastUpdated)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            if articleListViewModel.isShowingCachedData {
+                                ToastErrorMessage(lastUpdated: articleListViewModel.cacheLastUpdated){
+                                    await articleListViewModel.refresh()
+                                }
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
                         }
-                        .animation(.easeInOut, value: articleListViewModel.isShowingStaleData)
-                    
+                        .animation(.easeInOut, value: articleListViewModel.isShowingCachedData)
                 }
             }
             .navigationTitle("Top Headlines")
@@ -58,6 +59,20 @@ struct ArticleListView: View {
                     Spacer()
                     ProgressView()
                     Spacer()
+                }
+                .listRowSeparator(.hidden)
+            }
+            
+            if articleListViewModel.isShowingCachedContent {
+                Button {
+                    Task { await articleListViewModel.refresh() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                        Spacer()
+                    }
                 }
                 .listRowSeparator(.hidden)
             }

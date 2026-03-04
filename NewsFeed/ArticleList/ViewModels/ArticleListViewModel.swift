@@ -20,7 +20,8 @@ import Observation
     var isLoadingMore = false
     var errorMessage: String? = nil
     var loadMoreError: String? = nil
-    var isShowingStaleData = false
+    var isShowingCachedData = false
+    var isShowingCachedContent = false
     var cacheLastUpdated: Date? {
         cache.lastUpdated
     }
@@ -53,9 +54,11 @@ import Observation
         
         do {
             let result = try await repository.fetchArticles(page: currentPage)
-            articles = result.articles
-            totalResults = result.totalResults
-            cache.save(articles)
+             articles = result.articles
+             totalResults = result.totalResults
+             cache.save(articles)
+            isShowingCachedContent = false
+            isShowingCachedData = false
             #if DEBUG
             print("Loaded page \(currentPage), total: \(articles.count)/\(totalResults)")
             #endif
@@ -67,10 +70,8 @@ import Observation
             let cached = cache.load()
             if !cached.isEmpty {
                 articles = cached
+                isShowingCachedContent = true
                 showToastDataBanner()
-                #if DEBUG
-                print("Loading cached articles")
-                #endif
             } else {
                 articles = []
                 totalResults = 0
@@ -123,10 +124,10 @@ import Observation
     }
     
     func showToastDataBanner() {
-        isShowingStaleData = true
+        isShowingCachedData = true
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(3))
-            isShowingStaleData = false
+            try? await Task.sleep(for: .seconds(4))
+            isShowingCachedData = false
         }
     }
 }

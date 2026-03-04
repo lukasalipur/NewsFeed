@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ToastErrorMessage: View {
     let lastUpdated: Date?
+    let onRetry: () async -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -29,6 +30,14 @@ struct ToastErrorMessage: View {
             }
 
             Spacer()
+            
+            Button {
+                Task { await onRetry() }
+            } label: {
+                Text("Refresh")
+                    .font(.caption)
+                    .foregroundStyle(.white)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -40,5 +49,7 @@ struct ToastErrorMessage: View {
 }
 
 #Preview {
-    ToastErrorMessage(lastUpdated: Date())
+    ToastErrorMessage(lastUpdated: Date()) {
+        print("Try button tapped.")
+    }
 }
