@@ -25,16 +25,16 @@ The API key is never committed to the repository. It is stored in a `.env` file 
 
 1. Clone the repo
 2. Create a `.env` file in the project root:
+
    ```
    API_KEY = your_api_key_here
    ```
 3. Open `NewsFeed.xcodeproj`
-4. Build and run — `Cmd+R`
+4. Build and run - `Cmd+R`
 
 `Config.xcconfig` is already present in the project as a placeholder so Xcode can resolve the build configuration. The Pre-Action script overwrites it with your real key before every build. You do not need to touch any Xcode settings.
 
-**NOTE:** API Key will be provided via email.
-
+> The API key will be shared separately via email.
 ---
 
 ## Architecture
@@ -61,34 +61,29 @@ Utilities
   └── AppError, ArticleCacheService, Environment
 ```
 
-**Why MVVM and not Clean Architecture?**
-Clean Architecture adds a Use Case layer that makes sense when business logic is complex or shared across multiple ViewModels. This app has one screen, one endpoint, and straightforward logic. Adding Use Cases here would be indirection without benefit.
-
-**Why `@Observable` instead of `ObservableObject`?**
-`@Observable` (iOS 17) tracks only the properties that are actually read in a given View body, which means fewer unnecessary re-renders. It also eliminates `@Published` on every property, which reduces boilerplate and makes the ViewModel easier to read.
-
-**Why protocol-based dependencies?**
-`ArticleRepositoryProtocol` and `NetworkServiceProtocol` allow the ViewModel to be tested without a real network. `MockArticleRepository` in the test suite is the direct result of this decision.
-
-**How errors are handled**
-There are two error types with distinct responsibilities. `NetworkError` is thrown by `NetworkService` and carries technical information — the `URLError` code, the HTTP status, the `DecodingError`. `AppError` lives at the ViewModel level and maps `NetworkError` into user-facing strings. This means the networking layer never knows about UI, and the ViewModel never has to inspect raw `URLError` codes.
-
-`URLSession` is also configured with `waitsForConnectivity = false` and a 10 second request timeout. Without this, iOS waits up to 60 seconds before reporting a connectivity failure, which makes the app feel broken when there is no internet.
-
-**How offline is handled**
-When a network request fails due to connectivity, the app loads the last successful response from `UserDefaults` and shows it with a toast banner and a refresh button. If the failure is not connectivity-related — a server error, a decoding failure — the app shows the fullscreen error state instead, because cached articles are not relevant to those failures.
-
-The stale data UI uses two separate state flags: `isShowingCachedData` drives the toast banner which auto-dismisses after 4 seconds, and `isShowingCachedContent` drives the persistent refresh button at the bottom of the list. They are independent because their lifecycles are different.
-
 ---
+
+## Architecture
+
+MVVM with a strict separation between layers - Views render state, ViewModel owns all UI state and coordinates between repository and cache, Repository maps API responses to domain models, NetworkService handles HTTP and decoding.
+
+**State management** - `@Observable` (iOS 17) tracks only the properties actually read in a given View body, which means SwiftUI re-renders only what changed. It also removes the need for `@Published` on every property, making the ViewModel cleaner and easier to follow.
+
+**Testability** - `ArticleRepositoryProtocol` and `NetworkServiceProtocol` mean the ViewModel has no direct dependency on URLSession or the real network. The test suite uses `MockArticleRepository` to verify loading, error, and pagination behaviour in isolation.
+
+**Error handling** - there are two distinct error types. `NetworkError` is thrown by `NetworkService` and carries raw technical information the `URLError` code, HTTP status, `DecodingError`. `AppError` sits at the ViewModel level and translates those into user-facing strings. This keeps presentation logic out of the networking layer entirely.
+
+**Networking** - `URLSession` is configured with `waitsForConnectivity = false` and a 10 second request timeout. By default iOS waits up to 60 seconds before reporting a connectivity failure, which makes the app feel unresponsive. Failing fast lets the app immediately fall back to the cache and give the user useful feedback.
+
+**Offline** - cached articles are shown only when the failure is connectivity-related. A server error or a decoding failure shows the fullscreen error state instead, because showing stale articles would be misleading the network was reachable, something else went wrong. The stale data UI uses two separate flags: `isShowingCachedData` drives a toast that auto dismisses after 4 seconds, `isShowingCachedContent` drives a persistent refresh button at the bottom of the list. They are independent because their lifecycles are different the toast is a one-time notification, the button stays until the user successfully refreshes.
 
 ## What I Would Improve With More Time
 
-**Cache expiry** — `UserDefaults` has no TTL mechanism. With more time I would move to `SwiftData` and attach a timestamp to each cached response so that data older than a defined threshold is treated as expired rather than shown as stale.
+**Cache expiry** - `UserDefaults` has no TTL mechanism. With more time I would move to `SwiftData` and attach a timestamp to each cached response so that data older than a defined threshold is treated as expired rather than shown as stale.
 
-**Deep links** — `myapp://article/{id}` is not implemented. The blocker is that NewsAPI does not return stable article IDs, so there is nothing to put in the URL. A real implementation would require either generating a local ID or using the article URL as the identifier.
+**Deep links** - `myapp://article/{id}` is not implemented. The blocker is that NewsAPI does not return stable article IDs, so there is nothing to put in the URL. A real implementation would require either generating a local ID or using the article URL as the identifier.
 
-**Firebase Crashlytics** — there is no crash reporting. In a production app this would be one of the first things to add, because you cannot fix what you cannot observe.
+**Firebase Crashlytics** - there is no crash reporting. In a production app this would be one of the first things to add, because you cannot fix what you cannot observe.
 
 ---
 
