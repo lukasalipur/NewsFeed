@@ -63,20 +63,24 @@ import Observation
             print("Loaded page \(currentPage), total: \(articles.count)/\(totalResults)")
             #endif
             
-        } catch {
+        }  catch {
             guard !error.isCancellation else { return }
-            articles = []
-            totalResults = 0
+            
+            let appError = AppError(from: error)
             let cached = cache.load()
-            if !cached.isEmpty {
+            
+            if !cached.isEmpty, case .network(let urlError) = appError,
+               [.notConnectedToInternet, .networkConnectionLost, .dataNotAllowed].contains(urlError.code) {
                 articles = cached
+                totalResults = cached.count
                 isShowingCachedContent = true
                 showToastDataBanner()
+                errorMessage = nil
             } else {
                 articles = []
                 totalResults = 0
+                errorMessage = appError.userMessage
             }
-            errorMessage = AppError(from: error).userMessage
         }
     }
     
