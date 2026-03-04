@@ -6,8 +6,8 @@ A take-home assignment built to simulate joining a team maintaining a production
 
 ## Tech Stack
 
-- ** Swift **
-- ** SwiftUI ** 
+- **Swift**
+- **SwiftUI** 
 
 ---
 
@@ -99,4 +99,4 @@ Of the optional bonus items, I implemented **offline cache** as it directly impr
 
 ## What I Intentionally Left Out
 
-** Firebase ** and ** Fastlane ** were intentionally skipped. Both require real project  configuration to be meaningful, and an empty initialisation or a wrapper lane without proper signing setup would not demonstrate anything useful. I find it uncomfortable to leave code in a project that serves no real purpose it adds noise and gives a false impression of completeness.
+**Firebase** and **Fastlane** were intentionally skipped. Both require real project  configuration to be meaningful, and an empty initialisation or a wrapper lane without proper signing setup would not demonstrate anything useful. I find it uncomfortable to leave code in a project that serves no real purpose it adds noise and gives a false impression of completeness.
